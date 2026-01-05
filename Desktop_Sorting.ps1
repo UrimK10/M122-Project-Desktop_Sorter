@@ -6,6 +6,12 @@ $desktop = "$env:USERPROFILE\OneDrive - TBZ\Desktop"
 $logBase = "C:\DesktopSorterLogs"
 
 # -------------------------------
+# API KONFIGURATION
+# -------------------------------
+$APINinjasKey = "6++L9ketghqptNOHr/GrsA==gwbVGlYzQ1z66rxJ"
+
+
+# -------------------------------
 # LOGGING FUNKTIONEN
 # -------------------------------
 function Write-Log {
@@ -36,24 +42,44 @@ function Read-LogSummary {
 }
 
 # -------------------------------
-# WEISHEIT DES TAGES (API)
+# WEISHEIT DES TAGES (API NINJAS)
 # -------------------------------
 function Show-QuoteOfTheDay {
 
     Write-Host "`nWeisheit des Tages:`n"
 
-    try {
-        $response = Invoke-RestMethod -Uri "https://api.quotable.io/random" -Method Get
-        $quote = "`"$($response.content)`" — $($response.author)"
+    if ([string]::IsNullOrWhiteSpace($APINinjasKey)) {
+        Write-Host "API Key fehlt – keine Weisheit verfügbar"
+        Write-Log "API Ninjas Key fehlt"
+        return
+    }
 
-        Write-Host $quote
-        Write-Log "Weisheit des Tages: $quote"
+    try {
+        $headers = @{
+            "X-Api-Key" = $APINinjasKey
+        }
+
+        $response = Invoke-RestMethod `
+            -Uri "https://api.api-ninjas.com/v1/quotes" `
+            -Method Get `
+            -Headers $headers
+
+        if ($response.Count -gt 0) {
+            $quote = "`"$($response[0].quote)`" — $($response[0].author)"
+            Write-Host $quote
+            Write-Log "Weisheit des Tages: $quote"
+        }
+        else {
+            Write-Host "Keine Weisheit erhalten"
+            Write-Log "API Ninjas: Leere Antwort"
+        }
     }
     catch {
-        Write-Host "Keine Weisheit verfügbar (keine Internetverbindung)"
-        Write-Log "Weisheit des Tages konnte nicht geladen werden"
+        Write-Host "Keine Weisheit verfügbar (API Fehler)"
+        Write-Log "Weisheit des Tages konnte nicht geladen werden: $_"
     }
 }
+
 
 # -------------------------------
 # EASY MODE KATEGORIEN
