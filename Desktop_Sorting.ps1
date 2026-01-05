@@ -198,15 +198,15 @@ function Sort-ProMode {
 function Auto-Delete {
     Write-Log "Auto-Delete gestartet"
 
-    $folder = Read-Host "Pfad des Ordners"
+    $folder = Read-Host "Bitte gebe den Pfad des Ordners ein"
     if (-not (Test-Path $folder)) {
         Write-Host "Ordner existiert nicht"
         Write-Log "Auto-Delete abgebrochen (Ordner existiert nicht)"
         return
     }
 
-    $timeValue = Read-Host "Alter der Dateien (Zahl)"
-    $unit = Read-Host "Einheit (m/h/d)"
+    $timeValue = Read-Host "Wie Alt sollten die zu löschende Datei sein (Gebe eine Zahl ein, die einheit wird im anschluss gewählt)"
+    $unit = Read-Host "Einheit (m (Minuten)/h (Stunden)/d (Tage))"
 
     switch ($unit.ToLower()) {
         "m" { $cutoff = (Get-Date).AddMinutes(-$timeValue) }
