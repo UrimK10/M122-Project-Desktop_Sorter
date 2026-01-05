@@ -36,6 +36,26 @@ function Read-LogSummary {
 }
 
 # -------------------------------
+# WEISHEIT DES TAGES (API)
+# -------------------------------
+function Show-QuoteOfTheDay {
+
+    Write-Host "`nWeisheit des Tages:`n"
+
+    try {
+        $response = Invoke-RestMethod -Uri "https://api.quotable.io/random" -Method Get
+        $quote = "`"$($response.content)`" — $($response.author)"
+
+        Write-Host $quote
+        Write-Log "Weisheit des Tages: $quote"
+    }
+    catch {
+        Write-Host "Keine Weisheit verfügbar (keine Internetverbindung)"
+        Write-Log "Weisheit des Tages konnte nicht geladen werden"
+    }
+}
+
+# -------------------------------
 # EASY MODE KATEGORIEN
 # -------------------------------
 $EasyCategories = @{
@@ -80,6 +100,7 @@ function Sort-EasyMode {
 
     Write-Log "Easy Mode abgeschlossen"
     Read-LogSummary
+    Show-QuoteOfTheDay
 }
 
 # -------------------------------
@@ -142,6 +163,7 @@ function Sort-ProMode {
 
     Write-Log "Pro Mode abgeschlossen"
     Read-LogSummary
+    Show-QuoteOfTheDay
 }
 
 # -------------------------------
@@ -180,13 +202,41 @@ function Auto-Delete {
 }
 
 # -------------------------------
+# SYSTEM INFORMATIONEN
+# -------------------------------
+function Show-SystemInfo {
+
+    Write-Host "`nSysteminformationen:`n"
+    Write-Log "Systeminformationen abgefragt"
+
+    $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+    Write-Host "CPU : $($cpu.Name)"
+    Write-Log "CPU: $($cpu.Name)"
+
+    $ramGB = [Math]::Round(
+        (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2
+    )
+    Write-Host "RAM : $ramGB GB"
+    Write-Log "RAM: $ramGB GB"
+
+    $gpu = Get-CimInstance Win32_VideoController | Select-Object -First 1
+    Write-Host "GPU : $($gpu.Name)"
+    Write-Log "GPU: $($gpu.Name)"
+
+    $os = Get-CimInstance Win32_OperatingSystem
+    Write-Host "OS  : $($os.Caption)"
+    Write-Log "OS: $($os.Caption)"
+}
+
+# -------------------------------
 # HAUPTMENÜ
 # -------------------------------
 Write-Host "`nWas möchtest du tun?"
 Write-Host "1) Desktop sortieren"
 Write-Host "2) Alte Dateien automatisch löschen"
+Write-Host "3) Systeminformationen anzeigen"
 
-$choice = Read-Host "1 oder 2"
+$choice = Read-Host "Bitte 1, 2 oder 3 wählen"
 
 switch ($choice) {
     "1" {
@@ -202,5 +252,6 @@ switch ($choice) {
         }
     }
     "2" { Auto-Delete }
+    "3" { Show-SystemInfo }
     default { Write-Host "Ungültige Auswahl" }
 }
