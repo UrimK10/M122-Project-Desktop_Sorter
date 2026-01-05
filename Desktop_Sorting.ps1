@@ -3,6 +3,37 @@
 # -----------------------------------------
 
 $desktop = "$env:USERPROFILE\OneDrive - TBZ\Desktop"
+$logBase = "C:\DesktopSorterLogs"
+
+# -------------------------------
+# LOGGING FUNKTIONEN
+# -------------------------------
+function Write-Log {
+    param([string]$Message)
+
+    $dateFolder = Get-Date -Format "yyyy-MM-dd"
+    $logDir = Join-Path $logBase $dateFolder
+
+    if (-not (Test-Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir | Out-Null
+    }
+
+    $logFile = Join-Path $logDir "DesktopAssistant.log"
+    Add-Content $logFile "$(Get-Date -Format HH:mm:ss) - $Message"
+}
+
+function Read-LogSummary {
+    $dateFolder = Get-Date -Format "yyyy-MM-dd"
+    $logFile = Join-Path (Join-Path $logBase $dateFolder) "DesktopAssistant.log"
+
+    if (-not (Test-Path $logFile)) {
+        Write-Host "Kein Logfile für heute gefunden."
+        return
+    }
+
+    $count = (Select-String -Path $logFile -Pattern "->").Count
+    Write-Host "`n[READ] Verschobene Dateien laut Log: $count"
+}
 
 # -------------------------------
 # EASY MODE KATEGORIEN
@@ -21,13 +52,14 @@ $EasyCategories = @{
 function Sort-EasyMode {
     param($Desktop, $Categories)
 
-    Write-Host "`nEasy Mode:"
-    Write-Host "Dateien werden automatisch nach Typ sortiert (Bilder, Videos, Dokumente etc.)`n"
+    Write-Host "`nEasy Mode gestartet"
+    Write-Log "Easy Mode gestartet"
 
     foreach ($cat in $Categories.Keys) {
         $path = Join-Path $Desktop $cat
         if (-not (Test-Path $path)) {
             New-Item -ItemType Directory -Path $path | Out-Null
+            Write-Log "Ordner erstellt: $cat"
         }
     }
 
@@ -35,20 +67,19 @@ function Sort-EasyMode {
         -not $_.PSIsContainer
     }
 
-    $movedCount = 0
-
     foreach ($file in $files) {
         foreach ($category in $Categories.Keys) {
             if ($Categories[$category] -contains $file.Extension.ToLower()) {
                 Move-Item $file.FullName -Destination (Join-Path $Desktop $category) -Force
                 Write-Host "$($file.Name) -> $category"
-                $movedCount++
+                Write-Log "$($file.Name) -> $category"
                 break
             }
         }
     }
 
-    Write-Host "`nEasy Mode abgeschlossen. Dateien verschoben: $movedCount"
+    Write-Log "Easy Mode abgeschlossen"
+    Read-LogSummary
 }
 
 # -------------------------------
@@ -57,83 +88,78 @@ function Sort-EasyMode {
 function Sort-ProMode {
     param($Desktop)
 
-    Write-Host "`nProfessional Mode:"
-    Write-Host "Du wählst Dateiendungen UND den Zielordner selbst."
-    Write-Host "Beispiel: .png,.jpg -> Ordner 'Projekt'"
-    Write-Host "Nur passende Dateien werden verschoben.`n"
+    Write-Host "`nProfessional Mode gestartet"
+    Write-Log "Pro Mode gestartet"
 
-    # Dateiendungen
-    $inputExt = Read-Host "Gib die Dateiendungen ein (z.B. .png,.jpg,.xlsx)"
+    Write-Host "Du wählst Dateiendungen und einen Zielordner."
+
+    $inputExt = Read-Host "Dateiendungen (z.B. .png,.jpg,.xlsx)"
     $extensions = $inputExt.Split(",") | ForEach-Object { $_.Trim().ToLower() }
 
-    if ($extensions.Count -eq 0) {
-        Write-Host "Keine Dateiendungen angegeben – Abbruch"
-        return
-    }
+    Write-Log "Dateiendungen: $($extensions -join ', ')"
 
-    # Ordner auf Desktop auflisten
     $folders = Get-ChildItem $Desktop -Directory
 
-    Write-Host "`nWähle einen Zielordner:"
-    $index = 1
+    Write-Host "`nZielordner wählen:"
+    $i = 1
     foreach ($folder in $folders) {
-        Write-Host "$index) $($folder.Name)"
-        $index++
+        Write-Host "$i) $($folder.Name)"
+        $i++
     }
     Write-Host "0) Neuen Ordner erstellen"
 
-    $choice = Read-Host "Bitte Nummer wählen"
+    $choice = Read-Host "Nummer wählen"
 
     if ($choice -eq "0") {
         $newFolderName = Read-Host "Name des neuen Ordners"
         $targetFolder = Join-Path $Desktop $newFolderName
-
         if (-not (Test-Path $targetFolder)) {
             New-Item -ItemType Directory -Path $targetFolder | Out-Null
-            Write-Host "Ordner erstellt: $newFolderName"
+            Write-Log "Neuer Ordner erstellt: $newFolderName"
         }
     }
-    elseif ($choice -match '^\d+$' -and $choice -ge 1 -and $choice -le $folders.Count) {
+    elseif ($choice -ge 1 -and $choice -le $folders.Count) {
         $targetFolder = $folders[$choice - 1].FullName
     }
     else {
-        Write-Host "Ungültige Auswahl – Abbruch"
+        Write-Host "Ungültige Auswahl"
+        Write-Log "Pro Mode abgebrochen (ungültige Ordnerwahl)"
         return
     }
 
-    # Dateien verschieben
+    Write-Log "Zielordner: $(Split-Path $targetFolder -Leaf)"
+
     $files = Get-ChildItem $Desktop | Where-Object {
         -not $_.PSIsContainer -and
         $extensions -contains $_.Extension.ToLower()
     }
 
-    $movedCount = 0
     foreach ($file in $files) {
         Move-Item $file.FullName -Destination $targetFolder -Force
         Write-Host "$($file.Name) -> $(Split-Path $targetFolder -Leaf)"
-        $movedCount++
+        Write-Log "$($file.Name) -> $(Split-Path $targetFolder -Leaf)"
     }
 
-    Write-Host "`nPro Mode abgeschlossen. Dateien verschoben: $movedCount"
+    Write-Log "Pro Mode abgeschlossen"
+    Read-LogSummary
 }
 
 # -------------------------------
 # AUTO DELETE (OPTIONAL)
 # -------------------------------
 function Auto-Delete {
-    $folder = Read-Host "Pfad des Ordners für automatisches Löschen"
+    Write-Log "Auto-Delete gestartet"
+
+    $folder = Read-Host "Pfad des Ordners"
     if (-not (Test-Path $folder)) {
-        Write-Host "Ordner existiert nicht!"
+        Write-Host "Ordner existiert nicht"
+        Write-Log "Auto-Delete abgebrochen (Ordner existiert nicht)"
         return
     }
 
-    $timeValue = Read-Host "Wie alt sollen die Dateien sein? (Zahl)"
-    if (-not [int]::TryParse($timeValue, [ref]0)) {
-        Write-Host "Ungültige Zahl"
-        return
-    }
+    $timeValue = Read-Host "Alter der Dateien (Zahl)"
+    $unit = Read-Host "Einheit (m/h/d)"
 
-    $unit = Read-Host "Einheit (m=Minuten, h=Stunden, d=Tage)"
     switch ($unit.ToLower()) {
         "m" { $cutoff = (Get-Date).AddMinutes(-$timeValue) }
         "h" { $cutoff = (Get-Date).AddHours(-$timeValue) }
@@ -145,13 +171,12 @@ function Auto-Delete {
         -not $_.PSIsContainer -and $_.LastWriteTime -lt $cutoff
     }
 
-    $count = 0
     foreach ($file in $files) {
         Remove-Item $file.FullName -Force
-        $count++
+        Write-Log "Gelöscht: $($file.Name)"
     }
 
-    Write-Host "`nAuto-Delete abgeschlossen. Dateien gelöscht: $count"
+    Write-Log "Auto-Delete abgeschlossen"
 }
 
 # -------------------------------
@@ -161,16 +186,19 @@ Write-Host "`nWas möchtest du tun?"
 Write-Host "1) Desktop sortieren"
 Write-Host "2) Alte Dateien automatisch löschen"
 
-$choice = Read-Host "Bitte 1 oder 2 wählen"
+$choice = Read-Host "1 oder 2"
 
 switch ($choice) {
     "1" {
         $mode = Read-Host "Welchen Modus willst du? (Easy / Pro)"
-
-        switch ($mode.ToLower()) {
-            "easy" { Sort-EasyMode -Desktop $desktop -Categories $EasyCategories }
-            "pro"  { Sort-ProMode  -Desktop $desktop }
-            default { Write-Host "Ungültiger Modus" }
+        if ($mode.ToLower() -eq "easy") {
+            Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
+        }
+        elseif ($mode.ToLower() -eq "pro") {
+            Sort-ProMode -Desktop $desktop
+        }
+        else {
+            Write-Host "Ungültiger Modus"
         }
     }
     "2" { Auto-Delete }
