@@ -3,8 +3,12 @@
 Diese Anleitung erklärt kurz, wie das PowerShell‑Script ausgeführt wird und welche Voraussetzungen nötig sind.
 Gedacht ist sie als **README.md** für das GitHub‑Repository. Screenshots kannst du später ergänzen.
 
----
+Diese Dokumentation ist in Zwei teilein aufgeteilt. Einmal **Vorbereitung** und einmal **Ausführung**.
 
+
+
+---
+# Teil 1 - Vorbereitung
 ## Voraussetzungen
 
 * **Windows 10 oder Windows 11**
@@ -17,7 +21,7 @@ Gedacht ist sie als **README.md** für das GitHub‑Repository. Screenshots kann
 
 Download: [https://learn.microsoft.com/powershell/](https://learn.microsoft.com/powershell/)
 
-Nach der Installation heißt der Befehl:
+Nach der Installation heisst der Befehl:
 
 ```powershell
 pwsh
@@ -65,35 +69,133 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ---
 
-## Programmstart & Bedienung
+# Teil 2 - Ausführung
 
-* Nach dem Start erscheint ein **Hauptmenü**
-* Der Benutzer kann zwischen verschiedenen Modi wählen (z. B. Easy / Pro)
-* Aktionen werden automatisch **geloggt** (Logdateien nach Datum)
-* Je nach Modus werden Dateien sortiert, verschoben oder analysiert
-
-> **Hinweis:** Einige Funktionen (z. B. Auto‑Delete) können Dateien dauerhaft löschen. Bitte sorgfältig lesen, bevor Aktionen bestätigt werden.
+In diesem Teil wird erklärt was das Skript bietet und geht zu jeder Funktion ins Detail was es macht und wie man es zu benutzen hat.
 
 ---
 
-## Empfohlene Nutzung
+## Übersicht der Funktionen
 
-* Verwende das Script **nicht** direkt auf sensiblen Ordnern (z. B. Systemordner)
-* Teste neue Funktionen zuerst in einem **Testordner**
-* Lies die Konsolenausgaben aufmerksam, bevor du bestätigst
+Das Script bietet vier Hauptfunktionen:
+
+1. **Desktop Sorter (Easy Mode)**
+2. **Desktop Sorter (Pro Mode)**
+3. **Auto Deleter**
+4. **Systeminformationen anzeigen**
 
 ---
 
-## Troubleshooting
+## 1. Desktop Sorter (Easy Mode)
 
-**Script startet nicht?**
+Der **Easy Mode** ist für schnelle und sichere Desktop-Aufräumaktionen gedacht.
 
-* Stelle sicher, dass PowerShell 7 (x64) verwendet wird (`$PSVersionTable`)
-* Prüfe die Execution Policy
+### Was macht der Easy Mode?
 
-**Zugriff verweigert?**
+* Sortiert Dateien auf dem Desktop automatisch in vordefinierte Ordner
+* Erkennt gängige Dateitypen selbstständig
+* Überspringt unbekannte Dateien ohne Fehlermeldung
 
-* PowerShell ggf. als Administrator starten
+### Typische Sortierung
+
+* Bilder → *Pictures / Images*
+* Videos → *Videos*
+* Dokumente (PDF, DOCX, XLSX etc.) → *Documents*
+* Programme / Verknüpfungen → *Programs*
+
+### Für wen geeignet?
+
+* Anfänger
+* Nutzer, die **ohne viele Einstellungen** Ordnung schaffen wollen
+
+---
+
+## 2. Desktop Sorter (Pro Mode)
+
+Der **Pro Mode** bietet maximale Kontrolle über den Sortierprozess.
+
+### Was macht der Pro Mode?
+
+* Sortierung basierend auf **Dateiendungen**
+* Benutzer kann selbst festlegen:
+
+  * Welche Endung wohin verschoben wird
+  * Welche Dateitypen berücksichtigt werden
+
+### Besonderheiten
+
+* Höhere Flexibilität
+* Mehr Verantwortung beim Nutzer
+
+
+
+---
+
+## 3. Auto Deleter
+
+Der **Auto Deleter** löscht Dateien automatisch basierend auf ihrem Alter.
+
+### Funktionsweise
+
+* Benutzer wählt einen Ordner aus indem er den Pfad angibt
+* Benutzer definiert eine Zeitspanne:
+
+  * Minuten
+  * Stunden
+  * Tage
+
+* Alle Dateien, die **älter als die festgelegte Zeit** sind, werden gelöscht
+
+### Wichtige Hinweise
+
+* Dateien werden **dauerhaft gelöscht**
+* Es erfolgt eine Sicherheitsabfrage vor dem Start
+* Empfohlen nur für:
+
+  * Temporäre Ordner
+  * Download- oder Cache-Verzeichnisse
+
+
+
+---
+
+## 4. Systeminformationen anzeigen
+
+Diese Funktion zeigt grundlegende Systeminformationen an.
+
+### Angezeigte Informationen
+
+* CPU
+* Arbeitsspeicher (RAM)
+* Grafikkarte (GPU)
+* Weitere relevante Systemdaten
+
+### Zweck
+
+* Schneller Überblick über das eigene System
+* Nützlich für Diagnose oder Dokumentation
+
+---
+
+## Logging
+
+Alle Aktionen des Scripts werden automatisch protokolliert:
+
+* Logdateien werden **nach Datum benannt**
+* Gespeichert in einem Archiv- bzw. Log-Ordner
+* Enthalten Informationen über:
+
+  * Ausgeführte Aktionen
+  * Anzahl verschobener oder gelöschter Dateien
+
+---
+
+## Allgemeine Hinweise
+
+* Teste neue Funktionen zuerst mit **unwichtigen Dateien**
+* Lies Konsolenmeldungen aufmerksam
+* Der Benutzer trägt die Verantwortung für durchgeführte Aktionen
+
 
 ---
 
