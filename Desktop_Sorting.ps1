@@ -10,6 +10,40 @@ $logBase = "C:\DesktopSorterLogs"
 # -------------------------------
 $APINinjasKey = "6++L9ketghqptNOHr/GrsA==gwbVGlYzQ1z66rxJ"
 
+# -------------------------------
+# HAUPTMENÜ
+# -------------------------------
+Write-Host "`nWas möchtest du tun?"
+Write-Host "1) Desktop sortieren"
+Write-Host "2) Alte Dateien automatisch löschen"
+Write-Host "3) Systeminformationen anzeigen"
+Write-Host "0) Beenden"
+
+$choice = Read-Host "Bitte wählen"
+
+switch ($choice) {
+    "1" {
+        $mode = Read-Host "Welchen Modus willst du? (Easy / Pro)"
+        if ($mode.ToLower() -eq "easy") {
+            Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
+        }
+        elseif ($mode.ToLower() -eq "pro") {
+            Sort-ProMode -Desktop $desktop
+        }
+        else {
+            Write-Host "Ungültiger Modus"
+        }
+    }
+    "2" { Auto-Delete }
+    "3" { Show-SystemInfo }
+    "0" {
+        Write-Host "Programm beendet."
+        Write-Log "Programm vom Benutzer beendet"
+        exit
+    }
+    default { Write-Host "Ungültige Auswahl" }
+}
+
 
 # -------------------------------
 # LOGGING FUNKTIONEN
@@ -80,7 +114,6 @@ function Show-QuoteOfTheDay {
     }
 }
 
-
 # -------------------------------
 # EASY MODE KATEGORIEN
 # -------------------------------
@@ -109,18 +142,24 @@ function Sort-EasyMode {
         }
     }
 
-    $files = Get-ChildItem $Desktop | Where-Object {
-        -not $_.PSIsContainer
-    }
+    $files = Get-ChildItem $Desktop | Where-Object { -not $_.PSIsContainer }
 
     foreach ($file in $files) {
+        $matched = $false
+
         foreach ($category in $Categories.Keys) {
             if ($Categories[$category] -contains $file.Extension.ToLower()) {
                 Move-Item $file.FullName -Destination (Join-Path $Desktop $category) -Force
                 Write-Host "$($file.Name) -> $category"
                 Write-Log "$($file.Name) -> $category"
+                $matched = $true
                 break
             }
+        }
+
+        if (-not $matched) {
+            Write-Host "$($file.Name) -> Keine Kategorie"
+            Write-Log "Nicht zugeordnet: $($file.Name)"
         }
     }
 
@@ -137,8 +176,6 @@ function Sort-ProMode {
 
     Write-Host "`nProfessional Mode gestartet"
     Write-Log "Pro Mode gestartet"
-
-    Write-Host "Du wählst Dateiendungen und einen Zielordner."
 
     $inputExt = Read-Host "Dateiendungen (z.B. .png,.jpg,.xlsx)"
     $extensions = $inputExt.Split(",") | ForEach-Object { $_.Trim().ToLower() }
@@ -174,11 +211,8 @@ function Sort-ProMode {
         return
     }
 
-    Write-Log "Zielordner: $(Split-Path $targetFolder -Leaf)"
-
     $files = Get-ChildItem $Desktop | Where-Object {
-        -not $_.PSIsContainer -and
-        $extensions -contains $_.Extension.ToLower()
+        -not $_.PSIsContainer -and $extensions -contains $_.Extension.ToLower()
     }
 
     foreach ($file in $files) {
@@ -205,8 +239,14 @@ function Auto-Delete {
         return
     }
 
-    $timeValue = Read-Host "Wie Alt sollten die zu löschende Datei sein (Gebe eine Zahl ein, die einheit wird im anschluss gewählt)"
-    $unit = Read-Host "Einheit (m (Minuten)/h (Stunden)/d (Tage))"
+    $timeValue = Read-Host "Wie Alt sollten die zu löschende Datei sein (Zahl eingeben)"
+    if (-not ($timeValue -as [int]) -or [int]$timeValue -le 0) {
+        Write-Host "Ungültige Zeitangabe"
+        Write-Log "Auto-Delete abgebrochen (ungültige Zeitangabe)"
+        return
+    }
+
+    $unit = Read-Host "Einheit (m/h/d)"
 
     switch ($unit.ToLower()) {
         "m" { $cutoff = (Get-Date).AddMinutes(-$timeValue) }
@@ -217,6 +257,22 @@ function Auto-Delete {
 
     $files = Get-ChildItem $folder | Where-Object {
         -not $_.PSIsContainer -and $_.LastWriteTime -lt $cutoff
+    }
+
+    if ($files.Count -eq 0) {
+        Write-Host "Keine Dateien gefunden."
+        Write-Log "Auto-Delete: Keine passenden Dateien gefunden"
+        return
+    }
+
+    Write-Host "`nFolgende Dateien werden gelöscht:"
+    $files | ForEach-Object { Write-Host "- $($_.Name)" }
+
+    $confirm = Read-Host "`nWirklich $($files.Count) Dateien löschen? (y/n)"
+    if ($confirm.ToLower() -ne "y") {
+        Write-Host "Auto-Delete abgebrochen"
+        Write-Log "Auto-Delete vom Benutzer abgebrochen"
+        return
     }
 
     foreach ($file in $files) {
@@ -237,47 +293,16 @@ function Show-SystemInfo {
 
     $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
     Write-Host "CPU : $($cpu.Name)"
-    Write-Log "CPU: $($cpu.Name)"
 
     $ramGB = [Math]::Round(
         (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2
     )
     Write-Host "RAM : $ramGB GB"
-    Write-Log "RAM: $ramGB GB"
 
     $gpu = Get-CimInstance Win32_VideoController | Select-Object -First 1
     Write-Host "GPU : $($gpu.Name)"
-    Write-Log "GPU: $($gpu.Name)"
 
     $os = Get-CimInstance Win32_OperatingSystem
     Write-Host "OS  : $($os.Caption)"
-    Write-Log "OS: $($os.Caption)"
 }
 
-# -------------------------------
-# HAUPTMENÜ
-# -------------------------------
-Write-Host "`nWas möchtest du tun?"
-Write-Host "1) Desktop sortieren"
-Write-Host "2) Alte Dateien automatisch löschen"
-Write-Host "3) Systeminformationen anzeigen"
-
-$choice = Read-Host "Bitte 1, 2 oder 3 wählen"
-
-switch ($choice) {
-    "1" {
-        $mode = Read-Host "Welchen Modus willst du? (Easy / Pro)"
-        if ($mode.ToLower() -eq "easy") {
-            Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
-        }
-        elseif ($mode.ToLower() -eq "pro") {
-            Sort-ProMode -Desktop $desktop
-        }
-        else {
-            Write-Host "Ungültiger Modus"
-        }
-    }
-    "2" { Auto-Delete }
-    "3" { Show-SystemInfo }
-    default { Write-Host "Ungültige Auswahl" }
-}
