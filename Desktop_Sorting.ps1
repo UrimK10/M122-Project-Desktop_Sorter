@@ -108,7 +108,7 @@ function Sort-EasyMode {
         }
     }
 
-    $files = Get-ChildItem $Desktop | Where-Object { -not $_.PSIsContainer }
+    $files = Get-ChildItem $Desktop -File
 
     foreach ($file in $files) {
         $matched = $false
@@ -168,8 +168,8 @@ function Sort-ProMode {
         return
     }
 
-    Get-ChildItem $Desktop | Where-Object {
-        -not $_.PSIsContainer -and $extensions -contains $_.Extension.ToLower()
+    Get-ChildItem $Desktop -File | Where-Object {
+        $extensions -contains $_.Extension.ToLower()
     } | ForEach-Object {
         Move-Item $_.FullName -Destination $targetFolder -Force
         Write-Log "$($_.Name) -> $(Split-Path $targetFolder -Leaf)"
@@ -210,8 +210,8 @@ function Auto-Delete {
         "d" { $cutoff = (Get-Date).AddDays(-$value) }
     }
 
-    $files = Get-ChildItem $folder | Where-Object {
-        -not $_.PSIsContainer -and $_.LastWriteTime -lt $cutoff
+    $files = Get-ChildItem $folder -File | Where-Object {
+        $_.LastWriteTime -lt $cutoff
     }
 
     if ($files.Count -eq 0) {
@@ -249,29 +249,52 @@ function Show-SystemInfo {
 }
 
 # =====================================================
-# HAUPTMENÜ (IMMER ZU UNTERST!)
+# HAUPTMENÜ (MIT LOOP + ASCII)
 # =====================================================
-Write-Host "`nWas möchtest du tun?"
-Write-Host "1) Desktop sortieren"
-Write-Host "2) Alte Dateien automatisch löschen"
-Write-Host "3) Systeminformationen anzeigen"
-Write-Host "0) Beenden"
 
-switch (Read-Host "Bitte wählen") {
-    "1" {
-        $mode = Read-Host "Easy oder Pro?"
-        if ($mode.ToLower() -eq "easy") {
-            Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
+do {
+    Clear-Host
+
+    Write-Host @"
+====================================
+   DESKTOP ASSISTANT v1.0
+====================================
+"@
+
+    Write-Host "Was möchtest du tun?"
+    Write-Host "1) Desktop sortieren"
+    Write-Host "2) Alte Dateien automatisch löschen"
+    Write-Host "3) Systeminformationen anzeigen"
+    Write-Host "0) Beenden"
+
+    $choice = Read-Host "Bitte wählen"
+
+    switch ($choice) {
+        "1" {
+            $mode = Read-Host "Easy oder Pro?"
+            if ($mode.ToLower() -eq "easy") {
+                Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
+            }
+            elseif ($mode.ToLower() -eq "pro") {
+                Sort-ProMode -Desktop $desktop
+            }
+            else {
+                Write-Host "Ungültiger Modus"
+            }
         }
-        elseif ($mode.ToLower() -eq "pro") {
-            Sort-ProMode -Desktop $desktop
+        "2" { Auto-Delete }
+        "3" { Show-SystemInfo }
+        "0" {
+            Write-Log "Programm beendet"
+            Write-Host "Programm wird beendet..."
+            break
+        }
+        default {
+            Write-Host "Ungültige Auswahl"
         }
     }
-    "2" { Auto-Delete }
-    "3" { Show-SystemInfo }
-    "0" {
-        Write-Log "Programm beendet"
-        exit
-    }
-    default { Write-Host "Ungültige Auswahl" }
-}
+
+    Write-Host "`nDrücke ENTER um zum Menü zurückzukehren..."
+    Read-Host
+
+} while ($true)
