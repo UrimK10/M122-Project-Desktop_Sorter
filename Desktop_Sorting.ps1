@@ -249,8 +249,10 @@ function Show-SystemInfo {
 }
 
 # =====================================================
-# HAUPTMENÜ (MIT LOOP + ASCII)
+# HAUPTMENÜ (MIT LOOP + SAUBEREM EXIT)
 # =====================================================
+
+$exitProgram = $false
 
 do {
     Clear-Host
@@ -287,14 +289,16 @@ do {
         "0" {
             Write-Log "Programm beendet"
             Write-Host "Programm wird beendet..."
-            break
+            $exitProgram = $true
         }
         default {
             Write-Host "Ungültige Auswahl"
         }
     }
 
-    Write-Host "`nDrücke ENTER um zum Menü zurückzukehren..."
-    Read-Host
+    if (-not $exitProgram) {
+        Write-Host "`nDrücke ENTER um zum Menü zurückzukehren..."
+        Read-Host
+    }
 
-} while ($true)
+} while (-not $exitProgram)
