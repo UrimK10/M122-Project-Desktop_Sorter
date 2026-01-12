@@ -85,7 +85,45 @@ Das Script bietet vier Hauptfunktionen:
 4. **Systeminformationen anzeigen**
 
 ---
+## Script Durchlauf
+Beim Ausführen vom Programm kommt man ins Hauptmenü:![alt text](image.png)
+Hier wählt man den Gewünschten Modus an indem man die entsprechende **Zahl** eingibt. Mit "0" Kann man das Programm auch beenden.
 
+Ich gehe nicht auf die Funktion 3 ein da sie Ziemlich selbsterklärend ist.
+
+### Desktop Sortieren
+Indem man **1** eingibt kann man den Desktop Sortieren lassen.
+Man hat dann Zwei Optionen zur verfügung: Easy und Pro
+
+Um den Modus auszuwählen muss man auch schauen das man es ganz ausschreibt und keine Tipp fehler macht (Gross/Kleinschreibung ist irrelevant)
+
+---
+#### Easy mode
+Der Easy Mode führt das Script einfach aus und benutzt den Sortier Default um eine Grundlegende Ordnerstruktur zu erstellen und Dateien basierend auf dem Dateityp dort hin zu sortieren.
+
+**!!WICHTIG!!:** Wenn eine Datei den gleichen Namen trägt wie eine im Ordner und dorthin verschoben wird, wird die datei die bereits im Ordner war **überschrieben**.
+
+---
+#### Pro Mode
+Im Pro Mode kann man einen der bereits exestierenden Ordner auswählen oder einen neuen erstellen und dann selbst entscheiden welche Datei endung in welchen Ordner kommt.
+
+Ein ablauf kann wie folgt aussehen:
+
+![alt text](image-1.png)
+
+### Delete Funktion
+Vorab weg, der funktionsname "Alte Dateien automatisch löschen" ist etwas irre führend. Es werden lediglich alle dateien einmalig gelöscht die  älter sind als die angegebene Zeit.
+
+Hier wäre ein beispiel wie ein Ablauf aussehen könnte:
+
+![alt text](image-2.png)
+
+# Fazit
+Solange man das macht was das Script sagt und wenn optionen nummeriert sind Nummern eingibt oder halt einfach den Buchstaben eingibt wie bei der Bestätigung vom löschen (y/n) sollte es ansicht gut funktioniert.
+
+Weiter Gehts ins detail von jeder Funktion und was sie machen:
+
+---
 ## 1. Desktop Sorter (Easy Mode)
 
 Der **Easy Mode** ist für schnelle und sichere Desktop-Aufräumaktionen gedacht.

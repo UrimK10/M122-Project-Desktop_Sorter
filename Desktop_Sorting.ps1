@@ -2,129 +2,104 @@
 # Desktop Assistant – Easy / Pro Mode
 # -----------------------------------------
 
-# -------------------------------
+# ===============================
 # BASIS KONFIGURATION
-# -------------------------------
+# ===============================
 $desktop = "$env:USERPROFILE\OneDrive - TBZ\Desktop"
 $logBase = "C:\DesktopSorterLogs"
 
-# -------------------------------
+# ===============================
 # API KONFIGURATION
-# -------------------------------
+# ===============================
 $APINinjasKey = "6++L9ketghqptNOHr/GrsA==gwbVGlYzQ1z66rxJ"
 
-# -------------------------------
+# ===============================
 # EASY MODE KATEGORIEN
-# -------------------------------
+# ===============================
 $EasyCategories = @{
     "Bilder"     = @(".png", ".jpg", ".jpeg", ".gif", ".bmp")
     "Videos"     = @(".mp4", ".mkv", ".avi", ".mov")
     "Dokumente"  = @(".txt", ".pdf", ".docx", ".xlsx")
     "Audio"      = @(".mp3", ".wav", ".flac")
     "Programme"  = @(".exe", ".msi")
+    "Shortcuts"  = @(".lnk")
 }
 
-# =====================================================
-# FUNKTIONEN
-# =====================================================
+# ===============================
+# LOGGING (PRO AKTION)
+# ===============================
+function Start-NewLog {
+    $script:logStartTime = Get-Date
+    $dateFolder = $logStartTime.ToString("yyyy-MM-dd")
+    $timeFile   = $logStartTime.ToString("HH-mm-ss") + ".txt"
 
-# -------------------------------
-# LOGGING
-# -------------------------------
-function Write-Log {
-    param([string]$Message)
-
-    $dateFolder = Get-Date -Format "yyyy-MM-dd"
-    $logDir = Join-Path $logBase $dateFolder
+    $script:logDir  = Join-Path $logBase $dateFolder
+    $script:logFile = Join-Path $logDir $timeFile
 
     if (-not (Test-Path $logDir)) {
         New-Item -ItemType Directory -Path $logDir | Out-Null
     }
+}
 
-    $logFile = Join-Path $logDir "DesktopAssistant.log"
-    Add-Content $logFile "$(Get-Date -Format HH:mm:ss) - $Message"
+function Write-Log {
+    param([string]$Message)
+    Add-Content $script:logFile "$(Get-Date -Format HH:mm:ss) $Message"
 }
 
 function Read-LogSummary {
-    $dateFolder = Get-Date -Format "yyyy-MM-dd"
-    $logFile = Join-Path (Join-Path $logBase $dateFolder) "DesktopAssistant.log"
-
-    if (-not (Test-Path $logFile)) {
-        Write-Host "Kein Logfile für heute gefunden."
-        return
+    if (-not (Test-Path $script:logFile)) { return }
+    $moves = Get-Content $script:logFile | Where-Object {
+        $_ -match "\[MOVE\]"
     }
-
-    $count = (Select-String -Path $logFile -Pattern "->").Count
-    Write-Host "`n[READ] Verschobene Dateien laut Log: $count"
+    Write-Host "`n[READ] Verschobene Dateien: $($moves.Count)"
 }
 
-# -------------------------------
+# ===============================
 # WEISHEIT DES TAGES
-# -------------------------------
+# ===============================
 function Show-QuoteOfTheDay {
-
     Write-Host "`nWeisheit des Tages:`n"
-
-    if ([string]::IsNullOrWhiteSpace($APINinjasKey)) {
-        Write-Host "API Key fehlt"
-        Write-Log "API Ninjas Key fehlt"
-        return
-    }
-
     try {
         $headers = @{ "X-Api-Key" = $APINinjasKey }
-
         $response = Invoke-RestMethod `
             -Uri "https://api.api-ninjas.com/v1/quotes" `
-            -Method Get `
             -Headers $headers
-
         if ($response.Count -gt 0) {
             $quote = "`"$($response[0].quote)`" — $($response[0].author)"
             Write-Host $quote
-            Write-Log "Weisheit des Tages: $quote"
+            Write-Log "[QUOTE] $quote"
         }
-    }
-    catch {
-        Write-Host "Keine Weisheit verfügbar (API Fehler)"
-        Write-Log "API Fehler: $_"
+    } catch {
+        Write-Log "[ERROR] API Fehler"
     }
 }
 
-# -------------------------------
+# ===============================
 # EASY MODE
-# -------------------------------
+# ===============================
 function Sort-EasyMode {
     param($Desktop, $Categories)
 
+    Start-NewLog
+    Write-Log "[INFO] Easy Mode gestartet"
     Write-Host "`nEasy Mode gestartet"
-    Write-Log "Easy Mode gestartet"
 
     foreach ($cat in $Categories.Keys) {
         $path = Join-Path $Desktop $cat
         if (-not (Test-Path $path)) {
             New-Item -ItemType Directory -Path $path | Out-Null
-            Write-Log "Ordner erstellt: $cat"
+            Write-Log "[INFO] Ordner erstellt: $cat"
         }
     }
 
-    $files = Get-ChildItem $Desktop -File
-
-    foreach ($file in $files) {
-        $matched = $false
-
+    foreach ($file in Get-ChildItem $Desktop -File) {
         foreach ($category in $Categories.Keys) {
             if ($Categories[$category] -contains $file.Extension.ToLower()) {
                 Move-Item $file.FullName -Destination (Join-Path $Desktop $category) -Force
                 Write-Host "$($file.Name) -> $category"
-                Write-Log "$($file.Name) -> $category"
-                $matched = $true
+                Write-Log "[MOVE] $($file.Name) -> $category"
                 break
             }
-        }
-
-        if (-not $matched) {
-            Write-Log "Nicht zugeordnet: $($file.Name)"
         }
     }
 
@@ -132,16 +107,17 @@ function Sort-EasyMode {
     Show-QuoteOfTheDay
 }
 
-# -------------------------------
+# ===============================
 # PRO MODE
-# -------------------------------
+# ===============================
 function Sort-ProMode {
     param($Desktop)
 
+    Start-NewLog
+    Write-Log "[INFO] Pro Mode gestartet"
     Write-Host "`nPro Mode gestartet"
-    Write-Log "Pro Mode gestartet"
 
-    $extensions = (Read-Host "Dateiendungen (.png,.jpg,.pdf)").Split(",") |
+    $extensions = (Read-Host "Dateiendungen (.png,.jpg)").Split(",") |
         ForEach-Object { $_.Trim().ToLower() }
 
     $folders = Get-ChildItem $Desktop -Directory
@@ -157,52 +133,41 @@ function Sort-ProMode {
     if ($choice -eq "0") {
         $name = Read-Host "Name des neuen Ordners"
         $targetFolder = Join-Path $Desktop $name
-        New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
-        Write-Log "Neuer Ordner erstellt: $name"
+        New-Item -ItemType Directory -Path $targetFolder | Out-Null
+        Write-Log "[INFO] Neuer Ordner erstellt: $name"
     }
     elseif ($choice -ge 1 -and $choice -le $folders.Count) {
         $targetFolder = $folders[$choice - 1].FullName
     }
-    else {
-        Write-Host "Ungültige Auswahl"
-        return
-    }
+    else { return }
 
     Get-ChildItem $Desktop -File | Where-Object {
         $extensions -contains $_.Extension.ToLower()
     } | ForEach-Object {
         Move-Item $_.FullName -Destination $targetFolder -Force
-        Write-Log "$($_.Name) -> $(Split-Path $targetFolder -Leaf)"
+        Write-Log "[MOVE] $($_.Name) -> $(Split-Path $targetFolder -Leaf)"
     }
 
     Read-LogSummary
     Show-QuoteOfTheDay
 }
 
-# -------------------------------
-# AUTO DELETE
-# -------------------------------
+# ===============================
+# AUTO DELETE (ERWEITERT)
+# ===============================
 function Auto-Delete {
 
-    Write-Log "Auto-Delete gestartet"
+    Start-NewLog
+    Write-Log "[INFO] Auto-Delete gestartet"
 
-    $folder = Read-Host "Ordnerpfad eingeben"
-    if (-not (Test-Path $folder)) {
-        Write-Host "Ordner existiert nicht"
-        return
-    }
+    $folder = Read-Host "Ordnerpfad"
+    if (-not (Test-Path $folder)) { return }
 
-    $unit = Read-Host "Einheit (m = Minuten, h = Stunden, d = Tage)"
-    if ($unit -notin @("m","h","d")) {
-        Write-Host "Ungültige Einheit"
-        return
-    }
+    $unit  = Read-Host "Einheit (m/h/d)"
+    if ($unit -notin @("m","h","d")) { return }
 
-    $value = Read-Host "Wie alt sollen die Dateien sein? (Zahl)"
-    if (-not ($value -as [int]) -or $value -le 0) {
-        Write-Host "Ungültige Zeitangabe"
-        return
-    }
+    $value = Read-Host "Alter (Zahl)"
+    if (-not ($value -as [int]) -or $value -le 0) { return }
 
     switch ($unit) {
         "m" { $cutoff = (Get-Date).AddMinutes(-$value) }
@@ -219,27 +184,30 @@ function Auto-Delete {
         return
     }
 
-    Write-Host "`nZu löschende Dateien:"
-    $files | ForEach-Object { Write-Host "- $($_.Name)" }
+    Write-Host "`nFolgende Dateien werden gelöscht:`n"
+    $files | ForEach-Object { Write-Host $_.Name }
 
-    if ((Read-Host "Wirklich löschen? (y/n)").ToLower() -ne "y") {
-        Write-Log "Auto-Delete abgebrochen"
+    if ((Read-Host "`nWirklich löschen? (y/n)").ToLower() -ne "y") {
+        Write-Log "[INFO] Auto-Delete abgebrochen"
         return
     }
 
-    $files | ForEach-Object {
-        Remove-Item $_.FullName -Force
-        Write-Log "Gelöscht: $($_.Name)"
+    foreach ($file in $files) {
+        Remove-Item $file.FullName -Force
+        Write-Log "[DELETE] $($file.Name)"
     }
 
-    Write-Log "Auto-Delete abgeschlossen"
+    Write-Host "`nEs wurden $($files.Count) Dateien gelöscht."
+    Write-Log "[INFO] $($files.Count) Dateien gelöscht"
 }
 
-# -------------------------------
+# ===============================
 # SYSTEMINFOS
-# -------------------------------
+# ===============================
 function Show-SystemInfo {
-    Write-Log "Systeminfos abgefragt"
+
+    Start-NewLog
+    Write-Log "[INFO] Systeminfos angezeigt"
 
     Write-Host "`nSysteminformationen:`n"
     Write-Host "CPU : $((Get-CimInstance Win32_Processor)[0].Name)"
@@ -248,22 +216,15 @@ function Show-SystemInfo {
     Write-Host "OS  : $((Get-CimInstance Win32_OperatingSystem).Caption)"
 }
 
-# =====================================================
-# HAUPTMENÜ (MIT LOOP + SAUBEREM EXIT)
-# =====================================================
-
+# ===============================
+# HAUPTMENÜ
+# ===============================
 $exitProgram = $false
 
 do {
     Clear-Host
+    Write-Host "DESKTOP ASSISTANT v1.0"
 
-    Write-Host @"
-====================================
-   DESKTOP ASSISTANT v1.0
-====================================
-"@
-
-    Write-Host "Was möchtest du tun?"
     Write-Host "1) Desktop sortieren"
     Write-Host "2) Alte Dateien automatisch löschen"
     Write-Host "3) Systeminformationen anzeigen"
@@ -273,31 +234,19 @@ do {
 
     switch ($choice) {
         "1" {
-            $mode = Read-Host "Easy oder Pro?"
-            if ($mode.ToLower() -eq "easy") {
+            if ((Read-Host "Easy oder Pro?").ToLower() -eq "easy") {
                 Sort-EasyMode -Desktop $desktop -Categories $EasyCategories
-            }
-            elseif ($mode.ToLower() -eq "pro") {
+            } else {
                 Sort-ProMode -Desktop $desktop
-            }
-            else {
-                Write-Host "Ungültiger Modus"
             }
         }
         "2" { Auto-Delete }
         "3" { Show-SystemInfo }
-        "0" {
-            Write-Log "Programm beendet"
-            Write-Host "Programm wird beendet..."
-            $exitProgram = $true
-        }
-        default {
-            Write-Host "Ungültige Auswahl"
-        }
+        "0" { $exitProgram = $true }
     }
 
     if (-not $exitProgram) {
-        Write-Host "`nDrücke ENTER um zum Menü zurückzukehren..."
+        Write-Host "`nENTER drücken..."
         Read-Host
     }
 
